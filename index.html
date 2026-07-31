@@ -120,7 +120,7 @@
         /* GRID EXCLUSIVO PARA CORRELACIÓN (Para que el Status tenga espacio y respire) */
         .correlation-row-container {
             display: grid;
-            grid-template-columns: 3rem minmax(140px, 200px) 2fr 1.5fr 6rem; 
+            grid-template-columns: 3rem minmax(140px, 200px) 2fr 1.5fr 6rem 2rem; 
             align-items: center; gap: 1.5rem; padding: 1rem 1.25rem;
         }
 
@@ -128,12 +128,16 @@
             .leaderboard-row-container, .correlation-row-container {
                 grid-template-columns: 2.5rem 1fr auto; grid-template-rows: auto auto; gap: 0.5rem; padding: 1rem;
             }
+            .correlation-row-container {
+                grid-template-columns: 2.5rem 1fr auto auto; /* Espacio extra para el chevron */
+            }
             .lb-rank { grid-column: 1; grid-row: 1; align-self: center; }
             .lb-name { grid-column: 2; grid-row: 1; align-self: center; font-size: 1.05rem; }
             .lb-amount { grid-column: 3; grid-row: 1; text-align: right; }
             .lb-progress { grid-column: 1 / -1; grid-row: 2; margin-top: 0.25rem; }
             .lb-chevron { display: none; }
             .lb-status { display: none; } /* En móvil se oculta el status por espacio */
+            .corr-chevron { grid-column: 4; grid-row: 1; align-self: center; display: flex; }
         }
     </style>
 </head>
@@ -286,7 +290,7 @@
             </div>
             
             <div class="hidden md:grid correlation-row-container px-5 pb-4 mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-700/50 mx-4">
-                <div class="text-center">POS</div><div>NOMBRE</div><div>BARRAS DE PROGRESO (MES ACTUAL)</div><div class="text-right">MÉTRICAS</div><div class="text-center">ESTADO</div>
+                <div class="text-center">POS</div><div>NOMBRE</div><div>BARRAS DE PROGRESO (MES ACTUAL)</div><div class="text-right">MÉTRICAS</div><div class="text-center">ESTADO</div><div></div>
             </div>
             <div id="correlacion-container" class="flex flex-col gap-4">
                 <!-- Data will be injected here -->
@@ -315,6 +319,11 @@
         let globalProcessedData = [];
         let healthGlobalUsersMap = {}; 
         let isPredicting = false;
+
+        function normalizeMonthStr(str) {
+            if (!str) return "";
+            return str.trim().toLowerCase().replace('-', ' ').replace(/\s+/g, ' ');
+        }
 
         function setLoading(isLoading) {
             const syncIcon = document.querySelector('button[onclick="fetchData()"] i');
@@ -345,16 +354,23 @@
 
         function formatMonthName(str) {
             if(!str) return "";
-            let replaced = str.replace('-', ' ');
+            let replaced = normalizeMonthStr(str);
             return replaced.replace(/\b\w/g, l => l.toUpperCase());
         }
 
         function parseSpanishDate(str) {
             if (!str) return new Date();
-            const parts = str.toLowerCase().trim().split(/\s+/);
+            const parts = normalizeMonthStr(str).split(' ');
             const m = fullMonthNames.indexOf(parts[0]);
             const y = parseInt(parts[1]) || new Date().getFullYear();
             return new Date(y, m > -1 ? m : 0, 1);
+        }
+
+        function parseMonthYear(str) {
+            const parts = normalizeMonthStr(str).split(' ');
+            if(parts.length !== 2) return new Date(0);
+            const m = fullMonthNames.indexOf(parts[0]);
+            return new Date(parseInt(parts[1]), m, 1);
         }
 
         function switchView(viewName) {
@@ -468,7 +484,7 @@
             historicalData.forEach(row => {
                 if (!row.Nombre || !row.Mes) return;
                 const name = row.Nombre.trim();
-                const month = row.Mes.trim().toLowerCase(); 
+                const month = normalizeMonthStr(row.Mes); 
                 const progreso = parseNumber(row.Progreso);
                 const objetivo = parseNumber(row.Objetivo);
                 
@@ -481,25 +497,26 @@
                 monthsSet.add(month);
             });
 
-            const parseMonthYear = (str) => {
-                const parts = str.toLowerCase().split('-');
-                if(parts.length !== 2) return new Date(0);
-                const m = fullMonthNames.indexOf(parts[0]);
-                return new Date(parseInt(parts[1]), m, 1);
-            };
-            
             const sortedHistoricalMonths = Array.from(monthsSet).sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
             const currentDate = new Date();
-            const currentMonthName = fullMonthNames[currentDate.getMonth()] + '-' + currentDate.getFullYear();
+            const currentMonthName = fullMonthNames[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
 
             const processedData = validCurrentData.map((item, index) => {
                 const nombre = item.Nombre.trim();
-                const ventas = parseNumber(item.Progreso);
-                const meta = parseNumber(item.Objetivo);
+                
+                // Extraer de datos iniciales, pero PRIORIZAR el histórico si existe
+                let ventas = parseNumber(item.Progreso);
+                let meta = parseNumber(item.Objetivo);
+                const userHistory = historyMap[nombre] || {};
+                
+                if (userHistory[currentMonthName]) {
+                    ventas = userHistory[currentMonthName].ventas;
+                    meta = userHistory[currentMonthName].meta;
+                }
+                
                 let percentage = meta > 0 ? (ventas / meta) * 100 : 0;
                 
                 const history = [];
-                const userHistory = historyMap[nombre] || {};
                 
                 sortedHistoricalMonths.forEach(m => {
                     if (userHistory[m]) history.push(userHistory[m]);
@@ -549,7 +566,7 @@
                 const historyCardsHtml = person.history.map(h => {
                     if (h.meta === 0 && h.ventas === 0) return '';
                     const isWin = h.isOverGoal;
-                    const isCurrentMonth = h.month === fullMonthNames[new Date().getMonth()] + '-' + new Date().getFullYear();
+                    const isCurrentMonth = h.month === fullMonthNames[new Date().getMonth()] + ' ' + new Date().getFullYear();
                     
                     let bgCardClass = "bg-slate-800/40 border-slate-700/40";
                     let accentTextClass = "text-slate-400";
@@ -647,7 +664,7 @@
                 <div class="sticky-col-nombre bg-slate-800/90 flex items-center p-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-700">Nombre</div>
             `;
             
-            const currentMonthName = fullMonthNames[new Date().getMonth()] + '-' + new Date().getFullYear();
+            const currentMonthName = fullMonthNames[new Date().getMonth()] + ' ' + new Date().getFullYear();
 
             historyMonths.forEach((month, idx) => {
                 const isPredictionCol = matrixData[0].history[idx].isPrediction;
@@ -1007,7 +1024,7 @@
                 const salesFalta = Math.max(0, salesMeta - salesProg);
 
                 // --- DATOS SALUD ---
-                const currentMonthHealth = healthHistory.find(h => h.mes.toLowerCase() === currentMonthNameStr) || healthHistory[healthHistory.length - 1] || {};
+                const currentMonthHealth = healthHistory.find(h => normalizeMonthStr(h.mes) === currentMonthNameStr) || healthHistory[healthHistory.length - 1] || {};
                 
                 const healthMeta = currentMonthHealth.objetivo || 0;
                 const healthProgreso = currentMonthHealth.progreso || 0;
@@ -1016,17 +1033,74 @@
                 let healthFalta = 0;
                 
                 if (healthMeta > 0 && healthProgreso > 0) {
-                    healthPct = (healthMeta / healthProgreso) * 100; // Formula correcta
+                    healthPct = (healthMeta / healthProgreso) * 100;
                     healthFalta = Math.max(0, healthProgreso - healthMeta);
                 }
 
-                const rankClass = index === 0 ? "bg-amber-500/10 text-amber-400 border-amber-500/40" : 
+                // Generar historial combinado para el acordeón de correlación
+                const combinedHistoryMap = {};
+                
+                person.history.forEach(h => {
+                    if (h.isPrediction) return; 
+                    const m = normalizeMonthStr(h.month);
+                    if(!combinedHistoryMap[m]) combinedHistoryMap[m] = { monthStr: m, dateObj: parseMonthYear(m) };
+                    combinedHistoryMap[m].finanzas = h;
+                });
+
+                healthHistory.forEach(h => {
+                    const m = normalizeMonthStr(h.mes);
+                    if(!combinedHistoryMap[m]) combinedHistoryMap[m] = { monthStr: m, dateObj: parseMonthYear(m) };
+                    combinedHistoryMap[m].salud = h;
+                });
+
+                const combinedMonths = Object.values(combinedHistoryMap).sort((a,b) => a.dateObj - b.dateObj);
+                
+                const historyCardsHtml = combinedMonths.map(cm => {
+                    const f = cm.finanzas || { ventas: 0, meta: 0, percentage: 0, isOverGoal: false };
+                    const s = cm.salud || { progreso: null, objetivo: null };
+                    
+                    let finHtml = '';
+                    if (f.meta > 0 || f.ventas > 0) {
+                        finHtml = `
+                        <div class="flex justify-between items-center mt-2 bg-slate-900/50 p-1.5 rounded">
+                            <span class="text-[10px] text-blue-400 font-bold flex items-center gap-1"><i class="ph-fill ph-currency-dollar"></i> Finanzas</span>
+                            <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded ${f.isOverGoal ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-300'}">${f.percentage.toFixed(0)}%</span>
+                        </div>`;
+                    } else {
+                        finHtml = `<div class="text-[10px] text-slate-500 mt-2 bg-slate-900/30 p-1.5 rounded">Finanzas: N/A</div>`;
+                    }
+
+                    let salHtml = '';
+                    if (s.progreso && s.objetivo) {
+                        const isHealthSuccess = s.progreso <= s.objetivo;
+                        const hPct = (s.objetivo / s.progreso) * 100;
+                        salHtml = `
+                        <div class="flex justify-between items-center mt-1 bg-slate-900/50 p-1.5 rounded">
+                            <span class="text-[10px] text-emerald-400 font-bold flex items-center gap-1"><i class="ph-fill ph-heartbeat"></i> Salud</span>
+                            <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded ${isHealthSuccess ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}">${hPct.toFixed(0)}%</span>
+                        </div>`;
+                    } else {
+                        salHtml = `<div class="text-[10px] text-slate-500 mt-1 bg-slate-900/30 p-1.5 rounded">Salud: N/A</div>`;
+                    }
+                    
+                    return `
+                    <div class="rounded-xl p-3 bg-slate-800/40 border border-slate-700/40 relative overflow-hidden flex flex-col">
+                        <div class="text-xs font-bold text-slate-300 capitalize mb-1 border-b border-slate-700/50 pb-1 flex items-center justify-between">
+                            <span>${formatMonthName(cm.monthStr).split(' ')[0]}</span>
+                            <span class="text-[9px] text-slate-500">${cm.monthStr.split(' ')[1] || ''}</span>
+                        </div>
+                        ${finHtml}
+                        ${salHtml}
+                    </div>`;
+                }).join('');
+
+                const rankClass = index === 0 ? "bg-amber-500/10 text-amber-400 border-amber-500/40 shadow-[0_0_12px_rgba(245,158,11,0.2)]" : 
                                  (index === 1 ? "bg-slate-300/10 text-slate-300 border-slate-400/40" : 
                                  (index === 2 ? "bg-amber-800/10 text-amber-600 border-amber-700/40" : "bg-slate-800 border-slate-700 text-slate-400"));
 
-                // UTILIZAMOS correlation-row-container
+                // UTILIZAMOS correlation-row-container (ahora con el onClick añadido y su chevron)
                 const rowHtml = `
-                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl transition-all duration-300 hover:bg-slate-800/40 cursor-default animate-fade-in-up" style="animation-delay: ${index * 60}ms">
+                <div class="bg-slate-900/80 border border-slate-800 rounded-2xl transition-all duration-300 hover:bg-slate-800/40 cursor-pointer group animate-fade-in-up" style="animation-delay: ${index * 60}ms" onclick="toggleAccordion('corr-${person.id}')">
                     <div class="correlation-row-container">
                         
                         <!-- Rank -->
@@ -1035,52 +1109,65 @@
                         </div>
                         
                         <!-- Nombre -->
-                        <div class="lb-name font-bold text-white text-lg tracking-tight">${person.nombre}</div>
+                        <div class="lb-name font-bold text-white text-base tracking-tight">${person.nombre}</div>
                         
                         <!-- Barras de Progreso -->
-                        <div class="lb-progress flex flex-col justify-center gap-4">
+                        <div class="lb-progress flex flex-col justify-center gap-3">
                             <div>
-                                <div class="flex justify-between items-center mb-1.5 px-0.5">
-                                    <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-currency-dollar text-xs"></i> Meta de Ingresos</span>
+                                <div class="flex justify-between items-center mb-1 px-0.5">
+                                    <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-currency-dollar text-xs"></i> Ingresos</span>
                                     <span class="text-xs font-extrabold text-white">${salesPct.toFixed(1)}%</span>
                                 </div>
-                                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                     <div class="bg-blue-500 h-full rounded-full transition-all duration-1000" style="width: ${Math.min(salesPct, 100)}%"></div>
                                 </div>
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1.5 px-0.5">
-                                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-heartbeat text-rose-400 text-xs"></i> Meta de Salud Mensual</span>
+                                <div class="flex justify-between items-center mb-1 px-0.5">
+                                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-heartbeat text-rose-400 text-xs"></i> Salud</span>
                                     <span class="text-xs font-extrabold text-white">${healthPct > 0 ? healthPct.toFixed(1) + '%' : '--'}</span>
                                 </div>
-                                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                     <div class="bg-emerald-500 h-full rounded-full transition-all duration-1000" style="width: ${Math.min(healthPct, 100)}%"></div>
                                 </div>
                             </div>
                         </div>
                         
                         <!-- Montos -->
-                        <div class="lb-amount flex flex-col justify-center gap-4 text-right">
+                        <div class="lb-amount flex flex-col justify-center gap-3 text-right">
                             <div class="flex flex-col">
-                                <div class="text-base sm:text-lg font-extrabold text-white tracking-tight leading-none">${currencyFormatter.format(salesProg)}</div>
-                                <div class="text-[10px] font-semibold text-slate-400 mt-1">Meta: ${currencyFormatter.format(salesMeta)}</div>
+                                <div class="text-sm sm:text-base font-extrabold text-white tracking-tight leading-none">${currencyFormatter.format(salesProg)}</div>
+                                <div class="text-[9px] font-semibold text-slate-400 mt-1">Meta: ${currencyFormatter.format(salesMeta)}</div>
                             </div>
                             <div class="flex flex-col">
-                                <div class="text-base sm:text-lg font-extrabold text-white tracking-tight leading-none">${healthProgreso > 0 ? healthProgreso + ' lbs' : '--'}</div>
-                                <div class="text-[10px] font-semibold text-slate-400 mt-1">Meta: ${healthMeta > 0 ? healthMeta + ' lbs' : '--'}</div>
+                                <div class="text-sm sm:text-base font-extrabold text-white tracking-tight leading-none">${healthProgreso > 0 ? healthProgreso + ' lbs' : '--'}</div>
+                                <div class="text-[9px] font-semibold text-slate-400 mt-1">Meta: ${healthMeta > 0 ? healthMeta + ' lbs' : '--'}</div>
                             </div>
                         </div>
 
                         <!-- Estado -->
-                        <div class="lb-status hidden md:flex flex-col justify-center items-center gap-6 text-[9px] font-extrabold uppercase tracking-widest text-center">
-                            <div class="${salesFalta > 0 ? 'text-blue-500/60 w-full' : 'text-emerald-400 w-full py-1 bg-emerald-500/10 rounded border border-emerald-500/20'}">
+                        <div class="lb-status hidden md:flex flex-col justify-center items-center gap-4 text-[9px] font-extrabold uppercase tracking-widest text-center">
+                            <div class="${salesFalta > 0 ? 'text-blue-500/60 w-full' : 'text-emerald-400 w-full py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20'}">
                                 ${salesFalta > 0 ? 'En curso' : 'Logrado'}
                             </div>
-                            <div class="${healthFalta > 0 || healthProgreso === 0 ? 'text-emerald-500/60 w-full' : 'text-emerald-400 w-full py-1 bg-emerald-500/10 rounded border border-emerald-500/20'}">
+                            <div class="${healthFalta > 0 || healthProgreso === 0 ? 'text-emerald-500/60 w-full' : 'text-emerald-400 w-full py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20'}">
                                 ${healthFalta > 0 || healthProgreso === 0 ? 'En curso' : 'Logrado'}
                             </div>
                         </div>
 
+                        <!-- Chevron -->
+                        <div class="corr-chevron flex items-center justify-center text-slate-500"><i class="ph-bold ph-caret-down text-base transition-transform duration-300" id="chevron-corr-${person.id}"></i></div>
+
+                    </div>
+                    
+                    <!-- Contenido del Acordeón -->
+                    <div id="acc-corr-${person.id}" class="hidden border-t border-slate-800/80 bg-slate-950/40 p-4 rounded-b-2xl cursor-default" onclick="event.stopPropagation()">
+                        <h4 class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-1.5">
+                            <i class="ph-fill ph-clock-counter-clockwise text-slate-500"></i> Historial Comparativo
+                        </h4>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                            ${historyCardsHtml || '<div class="text-xs text-slate-500 col-span-full">Sin datos previos.</div>'}
+                        </div>
                     </div>
                 </div>`;
                 container.insertAdjacentHTML('beforeend', rowHtml);

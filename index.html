@@ -23,12 +23,12 @@
                     },
                     animation: {
                         'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards', 
+                        'fade-in-up': 'fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards', 
                         'glow-pulse': 'glowPulse 3s infinite alternate',
                     },
                     keyframes: {
                         fadeInUp: {
-                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
                             '100%': { opacity: '1', transform: 'translateY(0)' },
                         },
                         glowPulse: {
@@ -49,6 +49,7 @@
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: #0f172a; 
             color: #e2e8f0;
+            min-height: 100vh;
         }
 
         .progress-bar-fill {
@@ -67,6 +68,7 @@
             border: 1px solid rgba(255, 255, 255, 0.05);
             box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5); 
             border-radius: 20px; 
+            height: auto;
         }
 
         .glass-header {
@@ -78,20 +80,22 @@
 
         /* Transiciones entre Vistas */
         .view-section { transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .view-hidden { opacity: 0; pointer-events: none; position: absolute; visibility: hidden; transform: scale(0.98) translateY(8px); }
-        .view-active { opacity: 1; pointer-events: auto; position: relative; visibility: visible; transform: scale(1) translateY(0); }
+        .view-hidden { display: none; opacity: 0; }
+        .view-active { display: block; opacity: 1; animation: fadeInUp 0.4s ease forwards; }
 
-        /* Unificación fluida de tablas y matrices */
-        .matrix-grid-layout { display: grid; align-items: stretch; width: 100%; }
+        /* MATRIZ ESTRICTAMENTE HORIZONTAL */
+        .matrix-grid-layout { display: grid !important; align-items: stretch; width: 100%; }
         
         .sticky-col-racha, .sticky-col-nombre {
             background-color: inherit;
             position: sticky;
             z-index: 10;
         }
-        
         .sticky-col-racha { left: 0; }
         .sticky-col-nombre { left: 50px; }
+
+        /* Ajuste para el ranking de salud que no tiene columna de racha */
+        .sticky-col-nombre-only { left: 0; background-color: inherit; position: sticky; z-index: 10; }
 
         .matrix-row { transition: background-color 0.2s ease; border-bottom: 1px solid rgba(255, 255, 255, 0.03); background-color: transparent;}
         .matrix-row:hover { background-color: rgba(51, 65, 85, 0.4) !important; }
@@ -117,7 +121,6 @@
             align-items: center; gap: 1.25rem; padding: 1rem 1.25rem;
         }
 
-        /* GRID EXCLUSIVO PARA CORRELACIÓN (Para que el Status tenga espacio y respire) */
         .correlation-row-container {
             display: grid;
             grid-template-columns: 3rem minmax(140px, 200px) 2fr 1.5fr 6rem 2rem; 
@@ -133,11 +136,13 @@
             .lb-amount { grid-column: 3; grid-row: 1; text-align: right; }
             .lb-progress { grid-column: 1 / -1; grid-row: 2; margin-top: 0.25rem; }
             .lb-chevron { display: none; }
-            .lb-status { display: none; } /* En móvil se oculta el status por espacio */
+            .lb-status { display: none; } 
+            
+            .sticky-col-nombre { left: 40px; }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-brand-glow selection:text-white relative overflow-x-hidden">
+<body class="antialiased selection:bg-brand-glow selection:text-white relative overflow-x-hidden">
 
     <div class="fixed top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-600/5 blur-[120px] pointer-events-none z-0"></div>
     <div class="fixed bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-600/5 blur-[120px] pointer-events-none z-0"></div>
@@ -179,8 +184,9 @@
         </div>
     </header>
 
-    <main class="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 relative z-10">
+    <main class="w-full max-w-[1280px] mx-auto px-4 sm:px-6 py-8 relative z-10 h-auto">
         
+        <!-- VISTA MES ACTUAL -->
         <div id="view-current" class="view-section view-active">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 sm:gap-6 mb-8">
                 <div class="glass-panel p-6 flex flex-col justify-center transition-transform hover:-translate-y-1 duration-300 relative overflow-hidden group">
@@ -219,6 +225,7 @@
             </div>
         </div>
 
+        <!-- VISTA HISTÓRICO -->
         <div id="view-historical" class="view-section view-hidden">
             <div class="glass-panel overflow-hidden flex flex-col mb-8">
                 <div class="px-6 py-5 border-b border-slate-700/50 bg-slate-800/40 relative overflow-hidden">
@@ -237,7 +244,7 @@
                     </div>
                 </div>
                 
-                <div class="w-full overflow-x-auto custom-scrollbar bg-slate-900" id="matrix-scroll-wrapper">
+                <div class="w-full overflow-x-auto custom-scrollbar bg-slate-900 pb-2">
                     <div id="matrix-scroll-inner" class="w-full min-w-max">
                         <div id="matrix-header" class="matrix-grid-layout bg-slate-800/90 text-[11px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-700 shadow-md"></div>
                         <div id="matrix-container" class="flex flex-col bg-slate-900"></div>
@@ -252,12 +259,13 @@
                         Historial de Posiciones (Ranking)
                     </h3>
                 </div>
-                <div class="w-full overflow-x-auto custom-scrollbar bg-slate-900" id="ranking-scroll-wrapper">
-                    <div id="ranking-matrix-container" class="flex flex-col bg-slate-900 min-w-max pb-2"></div>
+                <div class="w-full overflow-x-auto custom-scrollbar bg-slate-900 pb-2">
+                    <div id="ranking-matrix-container" class="flex flex-col bg-slate-900 min-w-max"></div>
                 </div>
             </div>
         </div>
 
+        <!-- VISTA SALUD -->
         <div id="view-salud" class="view-section view-hidden">
             <div class="glass-panel px-6 py-5 border-b border-slate-700/50 bg-slate-800/40 relative mb-6">
                 <h3 class="text-xl font-extrabold text-white flex items-center gap-2.5 tracking-tight">
@@ -270,15 +278,29 @@
             <div id="salud-container" class="grid grid-cols-1 gap-6">
                 <!-- Data will be injected here -->
             </div>
+
+            <div class="glass-panel overflow-hidden flex flex-col mt-8">
+                <div class="px-6 py-5 border-b border-slate-700/50 bg-slate-800/40 relative">
+                    <h3 class="text-xl font-extrabold text-white flex items-center gap-2.5 tracking-tight">
+                        <i class="ph-fill ph-medal text-emerald-400 text-2xl drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"></i>
+                        Historial de Posiciones de Salud (Ranking)
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5 font-medium">Clasificación basada en el mayor porcentaje de logro hacia el peso ideal.</p>
+                </div>
+                <div class="w-full overflow-x-auto custom-scrollbar bg-slate-900 pb-2">
+                    <div id="health-ranking-matrix-container" class="flex flex-col bg-slate-900 min-w-max"></div>
+                </div>
+            </div>
         </div>
 
+        <!-- VISTA CORRELACIÓN -->
         <div id="view-correlacion" class="view-section view-hidden">
             <div class="glass-panel px-6 py-5 border-b border-slate-700/50 bg-slate-800/40 relative mb-6">
                 <h3 class="text-xl font-extrabold text-white flex items-center gap-2.5 tracking-tight">
                     <i class="ph-fill ph-arrows-merge text-emerald-400 text-2xl drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"></i>
                     Correlación Mensual de Salud y Finanzas
                 </h3>
-                <p class="text-xs text-slate-400 mt-0.5 font-medium">Vista comparativa del mes actual enfocada en las metas de dinero y salud.</p>
+                <p class="text-xs text-slate-400 mt-0.5 font-medium">Vista comparativa enfocada en las metas de dinero y salud mes a mes.</p>
             </div>
             
             <div class="hidden md:grid correlation-row-container px-5 pb-4 mb-2 text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-700/50 mx-4">
@@ -311,6 +333,12 @@
         let globalProcessedData = [];
         let healthGlobalUsersMap = {}; 
         let isPredicting = false;
+
+        // Utilidad centralizada para obtener el mes actual en el formato exacto de los datos
+        function getCurrentMonthName() {
+            const d = new Date();
+            return fullMonthNames[d.getMonth()] + '-' + d.getFullYear();
+        }
 
         function setLoading(isLoading) {
             const syncIcon = document.querySelector('button[onclick="fetchData()"] i');
@@ -347,7 +375,8 @@
 
         function parseSpanishDate(str) {
             if (!str) return new Date();
-            const parts = str.toLowerCase().trim().split(/\s+/);
+            // Regex fuerte: divide por espacios y guiones múltiples
+            const parts = str.toLowerCase().trim().split(/[\s-]+/).filter(Boolean);
             const m = fullMonthNames.indexOf(parts[0]);
             const y = parseInt(parts[1]) || new Date().getFullYear();
             return new Date(y, m > -1 ? m : 0, 1);
@@ -461,10 +490,14 @@
             const historyMap = {};
             const monthsSet = new Set();
             
+            // 1. Procesar datos históricos con limpieza de strings para evitar columnas duplicadas
             historicalData.forEach(row => {
                 if (!row.Nombre || !row.Mes) return;
                 const name = row.Nombre.trim();
-                const month = row.Mes.trim().toLowerCase(); 
+                const monthRaw = row.Mes.trim().toLowerCase(); 
+                const monthParts = monthRaw.split(/[\s-]+/).filter(Boolean); // Lógica estricta de regex
+                const month = monthParts.length > 1 ? `${monthParts[0]}-${monthParts[1]}` : monthRaw;
+                
                 const progreso = parseNumber(row.Progreso);
                 const objetivo = parseNumber(row.Objetivo);
                 
@@ -477,44 +510,75 @@
                 monthsSet.add(month);
             });
 
+            // 2. Definición estricta del Mes Actual
+            const currentMonthNameStr = getCurrentMonthName();
+            
+            // Añadir el mes actual obligatoriamente a la línea de tiempo
+            monthsSet.add(currentMonthNameStr);
+
+            // 3. Ordenar meses cronológicamente
             const parseMonthYear = (str) => {
                 const parts = str.toLowerCase().split('-');
                 if(parts.length !== 2) return new Date(0);
                 const m = fullMonthNames.indexOf(parts[0]);
                 return new Date(parseInt(parts[1]), m, 1);
             };
-            
             const sortedHistoricalMonths = Array.from(monthsSet).sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
-            const currentDate = new Date();
-            const currentMonthName = fullMonthNames[currentDate.getMonth()] + '-' + currentDate.getFullYear();
-
+            
+            // 4. Mapeo Definitivo (Fusionar y Resolver Cruces)
             const processedData = validCurrentData.map((item, index) => {
                 const nombre = item.Nombre.trim();
-                const ventas = parseNumber(item.Progreso);
-                const meta = parseNumber(item.Objetivo);
-                let percentage = meta > 0 ? (ventas / meta) * 100 : 0;
                 
-                const history = [];
+                // Extraer datos en vivo de la hoja currentData
+                const currentVentas = parseNumber(item.Progreso);
+                const currentMeta = parseNumber(item.Objetivo);
+                const currentPercentage = currentMeta > 0 ? (currentVentas / currentMeta) * 100 : 0;
+                const currentIsOverGoal = currentVentas >= currentMeta;
+                
                 const userHistory = historyMap[nombre] || {};
+                let history = [];
                 
                 sortedHistoricalMonths.forEach(m => {
-                    if (userHistory[m]) history.push(userHistory[m]);
-                    else history.push({ month: m, ventas: 0, meta: 0, percentage: 0, isOverGoal: false });
+                    if (m === currentMonthNameStr) {
+                        // REGLA CLAVE: Si es el mes actual, se fuerza a tomar los datos EN VIVO. 
+                        // Ignora por completo si existe en el histórico para prevenir cruces de versiones.
+                        history.push({ 
+                            month: m, 
+                            ventas: currentVentas, 
+                            meta: currentMeta, 
+                            percentage: currentPercentage, 
+                            isOverGoal: currentIsOverGoal 
+                        });
+                    } else if (userHistory[m]) {
+                        history.push(userHistory[m]);
+                    } else {
+                        history.push({ month: m, ventas: 0, meta: 0, percentage: 0, isOverGoal: false });
+                    }
                 });
 
-                if (!sortedHistoricalMonths.includes(currentMonthName)) {
-                     history.push({ month: currentMonthName, ventas: ventas, meta: meta, percentage: percentage, isOverGoal: ventas >= meta });
-                }
-
+                // Lógica de Rachas (Streaks) mejorada
                 let streak = 0;
                 for(let i = history.length - 1; i >= 0; i--) {
-                    if (history[i].month === currentMonthName) continue; 
-                    if(history[i].isOverGoal && history[i].ventas > 0) streak++;
+                    const h = history[i];
+                    // Si el mes actual aún está en curso y no se ha logrado la meta, NO rompas la racha acumulada
+                    if (h.month === currentMonthNameStr && !h.isOverGoal) continue; 
+                    
+                    if(h.isOverGoal && h.ventas > 0) streak++;
                     else break; 
                 }
 
                 const totalAcumulado = history.reduce((sum, h) => sum + (h.ventas || 0), 0);
-                return { id: `user-${index}`, nombre, ventas, meta, percentage, history, streak, totalAcumulado };
+                
+                return { 
+                    id: `user-${index}`, 
+                    nombre, 
+                    ventas: currentVentas, 
+                    meta: currentMeta, 
+                    percentage: currentPercentage, 
+                    history, 
+                    streak, 
+                    totalAcumulado 
+                };
             });
 
             processedData.sort((a, b) => b.percentage - a.percentage);
@@ -528,6 +592,8 @@
 
         function renderCurrentMonthView(processedData) {
             leaderboardContainer.innerHTML = '';
+            const currentMonthNameStr = getCurrentMonthName();
+
             processedData.forEach((person, index) => {
                 const rank = index + 1;
                 const visualPercentage = Math.min(person.percentage, 100);
@@ -543,9 +609,9 @@
                 if (rank === 3) rankClass = "bg-amber-800/10 text-amber-600 border-amber-700/40";
 
                 const historyCardsHtml = person.history.map(h => {
-                    if (h.meta === 0 && h.ventas === 0) return '';
+                    if (h.meta === 0 && h.ventas === 0 && h.month !== currentMonthNameStr) return '';
                     const isWin = h.isOverGoal;
-                    const isCurrentMonth = h.month === fullMonthNames[new Date().getMonth()] + '-' + new Date().getFullYear();
+                    const isCurrentMonth = h.month === currentMonthNameStr;
                     
                     let bgCardClass = "bg-slate-800/40 border-slate-700/40";
                     let accentTextClass = "text-slate-400";
@@ -612,6 +678,7 @@
         function renderHistoricalMatrix(data) {
             if(data.length === 0) return;
             let matrixData = JSON.parse(JSON.stringify(data));
+            const currentMonthNameStr = getCurrentMonthName();
             
             if (isPredicting) {
                 const currentMonthIdx = new Date().getMonth();
@@ -634,18 +701,16 @@
             const historyMonths = matrixData[0].history.map(h => h.month);
             const colsCount = historyMonths.length;
             
-            const gridStyle = `grid-template-columns: 50px minmax(110px, 160px) repeat(${colsCount}, minmax(1fr, 1fr));`; 
+            const gridStyle = `grid-template-columns: 50px minmax(110px, 160px) repeat(${colsCount}, minmax(90px, 1fr));`; 
 
             let headerHtml = `
                 <div class="sticky-col-racha bg-slate-800/90 flex items-center justify-center p-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-700">Racha</div>
                 <div class="sticky-col-nombre bg-slate-800/90 flex items-center p-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-b border-slate-700">Nombre</div>
             `;
             
-            const currentMonthName = fullMonthNames[new Date().getMonth()] + '-' + new Date().getFullYear();
-
             historyMonths.forEach((month, idx) => {
                 const isPredictionCol = matrixData[0].history[idx].isPrediction;
-                const isCurrent = month === currentMonthName;
+                const isCurrent = month === currentMonthNameStr;
                 const monthMeta = Math.max(...matrixData.map(p => p.history[idx].meta));
                 
                 let titleColor = isCurrent ? 'text-purple-400' : (isPredictionCol ? 'text-cyan-400' : 'text-slate-300');
@@ -662,7 +727,6 @@
                     </div>`;
             });
             
-            /* Aplicamos estilo de columnas de forma estricta */
             matrixHeader.setAttribute('style', gridStyle);
             matrixHeader.innerHTML = headerHtml;
 
@@ -677,9 +741,9 @@
                     : `<span class="text-slate-600 font-bold text-xs">-</span>`;
 
                 let monthsHtml = person.history.map(hist => {
-                    if (hist.meta === 0 && hist.ventas === 0 && !hist.isPrediction) return `<div class="matrix-cell-wrapper border-l border-slate-800/50"><div class="matrix-cell-inner"><span class="text-[10px] text-slate-600">N/A</span></div></div>`;
+                    if (hist.meta === 0 && hist.ventas === 0 && !hist.isPrediction && hist.month !== currentMonthNameStr) return `<div class="matrix-cell-wrapper border-l border-slate-800/50"><div class="matrix-cell-inner"><span class="text-[10px] text-slate-600">N/A</span></div></div>`;
 
-                    const isCurrent = hist.month === currentMonthName;
+                    const isCurrent = hist.month === currentMonthNameStr;
                     let cellBgClass = "border-l border-slate-800/50";
                     if (isCurrent) cellBgClass += " matrix-cell-current";
                     else if (hist.isPrediction) cellBgClass += " matrix-cell-prediction";
@@ -715,7 +779,7 @@
             const historyMonths = data[0].history.filter(h => !h.isPrediction).map(h => h.month);
             const colsCount = historyMonths.length;
             
-            const gridStyle = `grid-template-columns: minmax(110px, 160px) repeat(${colsCount}, minmax(1fr, 1fr));`;
+            const gridStyle = `grid-template-columns: minmax(110px, 160px) repeat(${colsCount}, minmax(90px, 1fr));`;
 
             historyMonths.forEach(month => {
                 let monthPerformances = data.map(p => ({ person: p, h: p.history.find(x => x.month === month) })).filter(item => item.h && item.h.ventas > 0);
@@ -726,7 +790,7 @@
             const rankingData = [...data].sort((a, b) => b.totalAcumulado - a.totalAcumulado);
 
             let headerHtml = `<div class="matrix-grid-layout bg-slate-800/90 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-700 shadow-md" style="${gridStyle}">`;
-            headerHtml += `<div class="sticky-col-nombre bg-slate-800/90 flex items-center p-2.5 font-bold uppercase tracking-widest border-b border-slate-700 z-20" style="left: 0;">Nombre</div>`;
+            headerHtml += `<div class="sticky-col-nombre-only bg-slate-800/90 flex items-center p-2.5 font-bold uppercase tracking-widest border-b border-slate-700 z-20">Nombre</div>`;
             
             historyMonths.forEach(month => {
                 headerHtml += `<div class="flex items-center justify-center py-2 px-2 text-slate-300 font-bold text-[10px] uppercase text-center border-l border-slate-700/50">${formatMonthName(month).split(' ')[0]}</div>`;
@@ -736,7 +800,7 @@
 
             rankingData.forEach((person, index) => {
                 let rowHtml = `<div class="matrix-grid-layout matrix-row transition-colors" style="${gridStyle}">`;
-                rowHtml += `<div class="sticky-col-nombre backdrop-blur-md bg-[#0f172a]/95 font-bold text-slate-200 text-xs truncate p-2.5 border-b border-slate-800/50 flex items-center" style="left: 0; z-index: 5;">${person.nombre}</div>`;
+                rowHtml += `<div class="sticky-col-nombre-only backdrop-blur-md bg-[#0f172a]/95 font-bold text-slate-200 text-xs truncate p-2.5 border-b border-slate-800/50 flex items-center z-10">${person.nombre}</div>`;
 
                 historyMonths.forEach(month => {
                     const h = person.history.find(x => x.month === month);
@@ -783,19 +847,24 @@
                 if(!usersMap[name]) usersMap[name] = [];
                 const progreso = parseNumber(row.Progreso);
                 const objetivo = parseNumber(row.Objetivo);
-                const mesRaw = row.Mes ? row.Mes.trim() : null;
                 
+                const mesRaw = row.Mes ? row.Mes.trim().toLowerCase() : null;
                 if(mesRaw) {
+                    const monthParts = mesRaw.split(/[\s-]+/).filter(Boolean); // Filtrado estricto
+                    const normalizedMonth = monthParts.length > 1 ? `${monthParts[0]}-${monthParts[1]}` : mesRaw;
+                    
                     usersMap[name].push({
-                        mes: mesRaw,
+                        mes: normalizedMonth, 
+                        displayMes: mesRaw,
                         progreso: progreso > 0 ? progreso : null,
                         objetivo: objetivo > 0 ? objetivo : null,
-                        dateObj: parseSpanishDate(mesRaw)
+                        dateObj: parseSpanishDate(normalizedMonth)
                     });
                 }
             });
 
             healthGlobalUsersMap = usersMap; 
+            const currentMonthNameStr = getCurrentMonthName();
 
             Object.keys(usersMap).forEach((name, index) => {
                 let history = usersMap[name];
@@ -803,38 +872,40 @@
 
                 const validProgress = history.filter(h => h.progreso !== null);
                 
-                // --- KPI: Peso Actual ---
                 let currentWeight = validProgress.length > 0 ? validProgress[validProgress.length - 1].progreso : '--';
                 
-                // --- KPI: Meta del Mes Actual ---
-                const today = new Date();
-                const currentMonthNameStr = fullMonthNames[today.getMonth()] + ' ' + today.getFullYear();
-                const currentMonthData = history.find(h => h.mes.toLowerCase() === currentMonthNameStr) || history[history.length - 1] || {};
+                const currentMonthData = history.find(h => h.mes === currentMonthNameStr) || history[history.length - 1] || {};
                 let currentMonthTarget = currentMonthData.objetivo ? currentMonthData.objetivo : '--';
 
-                // --- KPI: Meta Objetivo Final ---
                 const finalRecord = history[history.length - 1] || {};
                 let finalTarget = finalRecord.objetivo ? finalRecord.objetivo : '--';
+                let finalDateDisplay = finalRecord.mes ? formatMonthName(finalRecord.mes) : '';
 
-                // Cálculo del % alcanzado (Meta Mes Actual / Peso Actual)
                 let pctMesHtml = '';
                 if (currentMonthTarget !== '--' && currentWeight !== '--') {
                     const pctLogro = ((currentMonthTarget / currentWeight) * 100).toFixed(1);
                     pctMesHtml = `<div class="mt-2 bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1.5 rounded-lg text-[11px] font-bold inline-flex items-center gap-1.5"><i class="ph-fill ph-check-circle"></i> Logro alcanzado: ${pctLogro}%</div>`;
                 }
+                
+                let pctFinalHtml = '';
+                if (finalTarget !== '--' && currentWeight !== '--') {
+                    const pctFinal = ((finalTarget / currentWeight) * 100).toFixed(1);
+                    pctFinalHtml = `<div class="mt-2 text-emerald-400 text-[11px] font-bold inline-flex items-center gap-1.5"><i class="ph-bold ph-trend-up"></i> ${pctFinal}% logrado del objetivo final</div>`;
+                }
 
-                // Generar tarjetas de cumplimiento mensual SIN el nombre del mes
                 const monthCardsHtml = history.map(h => {
                     if (!h.progreso || !h.objetivo) return '';
                     
                     let pct = ((h.objetivo / h.progreso) * 100);
                     const isSuccess = h.progreso <= h.objetivo;
                     const faltan = Math.max(0, h.progreso - h.objetivo);
+                    const displayName = formatMonthName(h.mes);
 
                     return `
-                    <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 min-w-[130px] flex-shrink-0 relative overflow-hidden transition-all hover:bg-slate-700/80">
+                    <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 min-w-[130px] flex-shrink-0 relative overflow-hidden transition-all hover:bg-slate-700/80">
                         ${isSuccess ? '<div class="absolute top-0 right-0 w-8 h-8 bg-emerald-500/20 rounded-bl-full"></div>' : ''}
                         
+                        <div class="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">${displayName}</div>
                         <div class="flex flex-col mb-1">
                             <div class="text-3xl font-extrabold ${isSuccess ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-white'} tracking-tight">
                                 ${pct.toFixed(1)}%
@@ -842,7 +913,7 @@
                             <div class="text-[11px] text-slate-400 font-medium tracking-wide">Meta: ${h.objetivo} lbs</div>
                         </div>
                         
-                        <div class="mt-2 pt-2 border-t border-slate-700/50">
+                        <div class="mt-1 pt-2 border-t border-slate-700/50">
                             <div class="text-[11px] font-bold ${isSuccess ? 'text-emerald-400' : 'text-rose-400'}">
                                 ${isSuccess ? '<i class="ph-bold ph-check"></i> Logrado' : `Faltan ${faltan.toFixed(1)} lbs`}
                             </div>
@@ -863,24 +934,23 @@
                                         ${name}
                                     </h4>
                                     
-                                    <!-- 1. Peso Actual -->
                                     <div class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 shadow-inner mb-4 relative overflow-hidden">
                                         <div class="absolute right-[-10px] bottom-[-10px] w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
                                         <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5"><i class="ph-fill ph-scales text-blue-400"></i> Peso Actual</p>
                                         <p class="text-4xl font-extrabold text-white tracking-tight">${currentWeight} <span class="text-sm font-normal text-slate-400">lbs</span></p>
                                     </div>
                                     
-                                    <!-- 2. Meta del Mes Actual -->
                                     <div class="bg-indigo-900/20 p-4 rounded-xl border border-indigo-500/30 shadow-inner mb-4">
                                         <p class="text-[10px] text-indigo-300 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5"><i class="ph-bold ph-target text-indigo-400"></i> Meta del Mes Actual</p>
                                         <p class="text-3xl font-extrabold text-indigo-400 tracking-tight">${currentMonthTarget} <span class="text-sm font-normal text-indigo-300/60">lbs</span></p>
                                         ${pctMesHtml}
                                     </div>
 
-                                    <!-- 3. Meta Objetivo Final -->
-                                    <div class="bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20 shadow-inner">
+                                    <div class="bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20 shadow-inner relative">
+                                        <div class="absolute top-3 right-3 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold">${finalDateDisplay}</div>
                                         <p class="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5"><i class="ph-bold ph-flag text-emerald-500"></i> Meta Objetivo Final</p>
                                         <p class="text-2xl font-extrabold text-emerald-400/90 tracking-tight">${finalTarget} <span class="text-sm font-normal text-emerald-500/50">lbs</span></p>
+                                        ${pctFinalHtml}
                                     </div>
                                 </div>
                             </div>
@@ -905,6 +975,87 @@
                 `;
                 container.insertAdjacentHTML('beforeend', cardHtml);
                 renderHealthChart(`health-chart-${index}`, history);
+            });
+
+            calculateAndRenderHealthRanking(healthGlobalUsersMap);
+        }
+
+        function calculateAndRenderHealthRanking(usersMap) {
+            const container = document.getElementById('health-ranking-matrix-container');
+            container.innerHTML = '';
+            
+            const userNames = Object.keys(usersMap);
+            if(userNames.length === 0) return;
+
+            const allMonthsSet = new Set();
+            userNames.forEach(name => {
+                usersMap[name].forEach(h => {
+                    if (h.progreso && h.objetivo) allMonthsSet.add(h.mes);
+                });
+            });
+
+            const parseMonthYear = (str) => {
+                const parts = str.toLowerCase().split('-');
+                if(parts.length !== 2) return new Date(0);
+                const m = fullMonthNames.indexOf(parts[0]);
+                return new Date(parseInt(parts[1]), m, 1);
+            };
+
+            const sortedMonths = Array.from(allMonthsSet).sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
+            const colsCount = sortedMonths.length;
+            
+            if(colsCount === 0) return;
+
+            const gridStyle = `grid-template-columns: minmax(110px, 160px) repeat(${colsCount}, minmax(90px, 1fr));`;
+
+            const rankingsByMonth = {};
+            sortedMonths.forEach(month => {
+                let monthPerformances = [];
+                userNames.forEach(name => {
+                    const rec = usersMap[name].find(h => h.mes === month);
+                    if (rec && rec.progreso > 0 && rec.objetivo > 0) {
+                        const pct = (rec.objetivo / rec.progreso) * 100;
+                        monthPerformances.push({ name, pct });
+                    }
+                });
+                monthPerformances.sort((a, b) => b.pct - a.pct);
+                rankingsByMonth[month] = monthPerformances;
+            });
+
+            let headerHtml = `<div class="matrix-grid-layout bg-slate-800/90 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-700 shadow-md" style="${gridStyle}">`;
+            headerHtml += `<div class="sticky-col-nombre-only bg-slate-800/90 flex items-center p-2.5 font-bold uppercase tracking-widest border-b border-slate-700 z-20">Nombre</div>`;
+            
+            sortedMonths.forEach(month => {
+                headerHtml += `<div class="flex items-center justify-center py-2 px-2 text-slate-300 font-bold text-[10px] uppercase text-center border-l border-slate-700/50">${formatMonthName(month).split(' ')[0]}</div>`;
+            });
+            headerHtml += `</div>`;
+            container.insertAdjacentHTML('beforeend', headerHtml);
+
+            userNames.forEach((name) => {
+                let rowHtml = `<div class="matrix-grid-layout matrix-row transition-colors" style="${gridStyle}">`;
+                rowHtml += `<div class="sticky-col-nombre-only backdrop-blur-md bg-[#0f172a]/95 font-bold text-slate-200 text-xs truncate p-2.5 border-b border-slate-800/50 flex items-center z-10">${name}</div>`;
+
+                sortedMonths.forEach(month => {
+                    const perfList = rankingsByMonth[month] || [];
+                    const idx = perfList.findIndex(p => p.name === name);
+                    const rank = idx >= 0 ? idx + 1 : null;
+                    
+                    let cellContent = `<span class="text-slate-700 font-medium">-</span>`;
+                    let bgClass = "bg-transparent";
+
+                    if (rank === 1) {
+                        cellContent = `<span class="text-emerald-400 font-extrabold text-sm flex items-center justify-center gap-1"><i class="ph-fill ph-medal"></i> 1º</span>`; bgClass = "bg-emerald-500/10";
+                    } else if (rank === 2) {
+                        cellContent = `<span class="text-slate-300 font-extrabold text-sm flex items-center justify-center gap-1"><i class="ph-fill ph-medal"></i> 2º</span>`; bgClass = "bg-slate-400/10";
+                    } else if (rank === 3) {
+                        cellContent = `<span class="text-emerald-600 font-extrabold text-sm flex items-center justify-center gap-1"><i class="ph-fill ph-medal"></i> 3º</span>`; bgClass = "bg-emerald-900/20";
+                    } else if (rank > 3) {
+                        cellContent = `<span class="text-slate-400 font-bold text-xs">${rank}º</span>`;
+                    }
+                    rowHtml += `<div class="flex justify-center items-center p-2 border-l border-b border-slate-800/50 ${bgClass}">${cellContent}</div>`;
+                });
+                rowHtml += `</div>`;
+                container.insertAdjacentHTML('beforeend', rowHtml);
             });
         }
 
@@ -972,21 +1123,18 @@
                 return;
             }
 
-            const today = new Date();
-            const currentMonthNameStr = fullMonthNames[today.getMonth()] + ' ' + today.getFullYear();
+            const currentMonthNameStr = getCurrentMonthName();
 
             globalProcessedData.forEach((person, index) => {
                 const healthHistory = healthGlobalUsersMap[person.nombre] || [];
                 const finHistory = person.history || [];
                 
-                // --- DATOS FINANZAS (Mes Actual) ---
                 const salesProg = person.ventas;
                 const salesMeta = person.meta;
                 const salesPct = person.percentage;
                 const salesFalta = Math.max(0, salesMeta - salesProg);
 
-                // --- DATOS SALUD (Mes Actual) ---
-                const currentMonthHealth = healthHistory.find(h => h.mes.toLowerCase() === currentMonthNameStr) || healthHistory[healthHistory.length - 1] || {};
+                const currentMonthHealth = healthHistory.find(h => h.mes === currentMonthNameStr) || healthHistory[healthHistory.length - 1] || {};
                 const healthMeta = currentMonthHealth.objetivo || 0;
                 const healthProgreso = currentMonthHealth.progreso || 0;
                 
@@ -998,65 +1146,59 @@
                     healthFalta = Math.max(0, healthProgreso - healthMeta);
                 }
 
-                // --- HISTORIAL COMBINADO (Fusionando meses de ambas fuentes) ---
                 const allMonthsSet = new Set();
-                finHistory.forEach(h => { if(h.month) allMonthsSet.add(h.month.toLowerCase().replace(/\s+/g, '-')); });
-                healthHistory.forEach(h => { if(h.mes) allMonthsSet.add(h.mes.toLowerCase().replace(/\s+/g, '-')); });
+                finHistory.forEach(h => { if(h.month) allMonthsSet.add(h.month); });
+                healthHistory.forEach(h => { if(h.mes) allMonthsSet.add(h.mes); });
                 
-                // Ordenar meses cronológicamente
-                const sortedMonths = Array.from(allMonthsSet).sort((a, b) => {
-                    const partsA = a.split('-'); const partsB = b.split('-');
-                    const dateA = new Date(partsA[1] || 2026, fullMonthNames.indexOf(partsA[0]) > -1 ? fullMonthNames.indexOf(partsA[0]) : 0, 1);
-                    const dateB = new Date(partsB[1] || 2026, fullMonthNames.indexOf(partsB[0]) > -1 ? fullMonthNames.indexOf(partsB[0]) : 0, 1);
-                    return dateA - dateB;
-                });
+                const parseMonthYear = (str) => {
+                    const parts = str.toLowerCase().split('-');
+                    if(parts.length !== 2) return new Date(0);
+                    const m = fullMonthNames.indexOf(parts[0]);
+                    return new Date(parseInt(parts[1]), m, 1);
+                };
+
+                const sortedMonths = Array.from(allMonthsSet).sort((a, b) => parseMonthYear(a) - parseMonthYear(b));
 
                 const combinedHistory = sortedMonths.map(normMonth => {
-                    const finRecord = finHistory.find(h => h.month && h.month.toLowerCase().replace(/\s+/g, '-') === normMonth) || { ventas: 0, meta: 0, percentage: 0 };
-                    const healthRecord = healthHistory.find(h => h.mes && h.mes.toLowerCase().replace(/\s+/g, '-') === normMonth) || { progreso: 0, objetivo: 0 };
-                    
-                    // Rescatar nombre original para visualización
-                    const displayMonth = (finHistory.find(h => h.month && h.month.toLowerCase().replace(/\s+/g, '-') === normMonth)?.month) || 
-                                         (healthHistory.find(h => h.mes && h.mes.toLowerCase().replace(/\s+/g, '-') === normMonth)?.mes) || normMonth;
-                                         
-                    return { month: displayMonth, fin: finRecord, health: healthRecord };
+                    const finRecord = finHistory.find(h => h.month === normMonth) || { ventas: 0, meta: 0, percentage: 0 };
+                    const healthRecord = healthHistory.find(h => h.mes === normMonth) || { progreso: 0, objetivo: 0 };
+                    return { month: normMonth, fin: finRecord, health: healthRecord };
                 });
 
                 const historyCardsHtml = combinedHistory.map(h => {
-                    if ((h.fin.meta === 0 && h.fin.ventas === 0) && !h.health.objetivo && !h.health.progreso) return '';
+                    if ((h.fin.meta === 0 && h.fin.ventas === 0) && !h.health.objetivo && !h.health.progreso && h.month !== currentMonthNameStr) return '';
 
                     const isFinWin = h.fin.ventas >= h.fin.meta && h.fin.meta > 0;
                     const isHealthWin = h.health.progreso > 0 && h.health.progreso <= h.health.objetivo;
-                    const isCurrentMonth = h.month.toLowerCase().replace(/\s+/g, '-') === currentMonthNameStr.toLowerCase().replace(/\s+/g, '-');
+                    const isCurrentMonth = h.month === currentMonthNameStr;
 
                     const finPct = h.fin.percentage;
                     const hPct = h.health.progreso > 0 && h.health.objetivo > 0 ? (h.health.objetivo / h.health.progreso) * 100 : 0;
                     
-                    let bgCardClass = isCurrentMonth ? "bg-purple-900/20 border-purple-500/30" : "bg-slate-800/40 border-slate-700/40";
+                    let bgCardClass = isCurrentMonth ? "bg-purple-900/10 border-purple-500/50" : "bg-slate-800/20 border-slate-700/60";
                     let accentTextClass = isCurrentMonth ? "text-purple-300" : "text-slate-400";
+                    let leftBorderClass = isCurrentMonth ? "border-l-purple-500" : "border-l-slate-500";
 
                     return `
-                    <div class="rounded-xl p-3 ${bgCardClass} border relative overflow-hidden flex flex-col gap-1.5 transition-all hover:bg-slate-800/80">
-                        <div class="flex justify-between items-center border-b border-slate-700/50 pb-1.5 mb-1">
-                            <span class="text-xs font-bold ${accentTextClass} capitalize">${formatMonthName(h.month).split(' ')[0]}</span>
+                    <div class="p-3 ${bgCardClass} border border-l-2 ${leftBorderClass} flex flex-col gap-2 transition-all hover:bg-slate-800/60 rounded-sm">
+                        <div class="flex justify-between items-center border-b border-slate-700/50 pb-1 mb-1">
+                            <span class="text-[11px] font-bold ${accentTextClass} uppercase tracking-wider">${formatMonthName(h.month).split(' ')[0]}</span>
                         </div>
                         
-                        <!-- Bloque Finanzas -->
-                        <div class="flex flex-col">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <div class="text-[10px] font-bold text-blue-400/80 flex items-center gap-1"><i class="ph-fill ph-currency-dollar"></i> Finanzas</div>
-                                <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded ${isFinWin?'bg-blue-500/20 text-blue-400':(h.fin.ventas>0?'bg-slate-700 text-slate-300':'bg-transparent text-slate-600 border border-slate-700')}">${finPct > 0 ? finPct.toFixed(0) + '%' : '-'}</span>
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-sm border border-slate-800/80">
+                            <div class="flex flex-col">
+                                <div class="text-[9px] font-bold text-blue-400/80 uppercase">Finanzas</div>
+                                <div class="text-xs font-extrabold ${h.fin.ventas > 0 ? 'text-white' : 'text-slate-500'} tracking-tight">${h.fin.ventas > 0 ? currencyFormatter.format(h.fin.ventas) : '--'}</div>
                             </div>
-                            <div class="text-xs font-extrabold ${h.fin.ventas > 0 ? 'text-white' : 'text-slate-500'} tracking-tight">${h.fin.ventas > 0 ? currencyFormatter.format(h.fin.ventas) : '--'}</div>
+                            <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm ${isFinWin?'bg-blue-500/20 text-blue-400':(h.fin.ventas>0?'bg-slate-700 text-slate-300':'text-slate-600')}">${finPct > 0 ? finPct.toFixed(0) + '%' : '-'}</span>
                         </div>
 
-                        <!-- Bloque Salud -->
-                        <div class="flex flex-col border-t border-slate-700/50 pt-1.5 mt-0.5">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <div class="text-[10px] font-bold text-emerald-400/80 flex items-center gap-1"><i class="ph-fill ph-scales"></i> Salud</div>
-                                <span class="text-[10px] font-extrabold px-1.5 py-0.5 rounded ${isHealthWin?'bg-emerald-500/20 text-emerald-400':(hPct>0?'bg-slate-700 text-slate-300':'bg-transparent text-slate-600 border border-slate-700')}">${hPct > 0 ? hPct.toFixed(0) + '%' : '-'}</span>
+                        <div class="flex justify-between items-center bg-slate-900/50 p-1.5 rounded-sm border border-slate-800/80">
+                            <div class="flex flex-col">
+                                <div class="text-[9px] font-bold text-emerald-400/80 uppercase">Salud</div>
+                                <div class="text-xs font-extrabold ${h.health.progreso > 0 ? 'text-white' : 'text-slate-500'} tracking-tight">${h.health.progreso > 0 ? h.health.progreso + ' lbs' : '--'}</div>
                             </div>
-                            <div class="text-xs font-extrabold ${h.health.progreso > 0 ? 'text-white' : 'text-slate-500'} tracking-tight">${h.health.progreso > 0 ? h.health.progreso + ' lbs' : '--'}</div>
+                            <span class="text-[9px] font-extrabold px-1.5 py-0.5 rounded-sm ${isHealthWin?'bg-emerald-500/20 text-emerald-400':(hPct>0?'bg-slate-700 text-slate-300':'text-slate-600')}">${hPct > 0 ? hPct.toFixed(0) + '%' : '-'}</span>
                         </div>
                     </div>`;
                 }).join('');
@@ -1065,24 +1207,20 @@
                                  (index === 1 ? "bg-slate-300/10 text-slate-300 border-slate-400/40" : 
                                  (index === 2 ? "bg-amber-800/10 text-amber-600 border-amber-700/40" : "bg-slate-800 border-slate-700 text-slate-400"));
 
-                // UTILIZAMOS correlation-row-container
                 const rowHtml = `
                 <div class="bg-slate-900/80 border border-slate-800 rounded-2xl transition-all duration-200 hover:bg-slate-800/60 cursor-pointer group animate-fade-in-up" style="animation-delay: ${index * 40}ms" onclick="toggleAccordion('corr-${person.id}')">
                     <div class="correlation-row-container">
                         
-                        <!-- Rank -->
                         <div class="lb-rank flex justify-center">
                             <div class="flex items-center justify-center w-9 h-9 rounded-full ${rankClass} border font-extrabold text-xs">${index + 1}</div>
                         </div>
                         
-                        <!-- Nombre -->
                         <div class="lb-name font-bold text-white text-lg tracking-tight">${person.nombre}</div>
                         
-                        <!-- Barras de Progreso -->
                         <div class="lb-progress flex flex-col justify-center gap-4 py-2">
                             <div>
                                 <div class="flex justify-between items-center mb-1.5 px-0.5">
-                                    <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-currency-dollar text-xs"></i> Meta de Ingresos</span>
+                                    <span class="text-[10px] font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-currency-dollar text-xs"></i> Meta Ingresos</span>
                                     <span class="text-xs font-extrabold text-white">${salesPct.toFixed(1)}%</span>
                                 </div>
                                 <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -1091,7 +1229,7 @@
                             </div>
                             <div>
                                 <div class="flex justify-between items-center mb-1.5 px-0.5">
-                                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-heartbeat text-rose-400 text-xs"></i> Meta de Salud Mensual</span>
+                                    <span class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1"><i class="ph-fill ph-heartbeat text-rose-400 text-xs"></i> Meta Salud Mensual</span>
                                     <span class="text-xs font-extrabold text-white">${healthPct > 0 ? healthPct.toFixed(1) + '%' : '--'}</span>
                                 </div>
                                 <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
@@ -1100,7 +1238,6 @@
                             </div>
                         </div>
                         
-                        <!-- Montos -->
                         <div class="lb-amount flex flex-col justify-center gap-4 text-right">
                             <div class="flex flex-col">
                                 <div class="text-base sm:text-lg font-extrabold text-white tracking-tight leading-none">${currencyFormatter.format(salesProg)}</div>
@@ -1112,7 +1249,6 @@
                             </div>
                         </div>
 
-                        <!-- Estado -->
                         <div class="lb-status hidden md:flex flex-col justify-center items-center gap-6 text-[9px] font-extrabold uppercase tracking-widest text-center">
                             <div class="${salesFalta > 0 ? 'text-blue-500/60 w-full' : 'text-emerald-400 w-full py-1 bg-emerald-500/10 rounded border border-emerald-500/20'}">
                                 ${salesFalta > 0 ? 'En curso' : 'Logrado'}
@@ -1122,19 +1258,17 @@
                             </div>
                         </div>
 
-                        <!-- Chevron -->
                         <div class="lb-chevron flex items-center justify-center text-slate-500">
                             <i class="ph-bold ph-caret-down text-base transition-transform duration-300 group-hover:text-slate-300" id="chevron-corr-${person.id}"></i>
                         </div>
 
                     </div>
                     
-                    <!-- Accordion Content -->
                     <div id="acc-corr-${person.id}" class="hidden border-t border-slate-800/80 bg-slate-950/40 p-4 rounded-b-2xl cursor-default" onclick="event.stopPropagation()">
                         <h4 class="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-widest flex items-center gap-1.5">
                             <i class="ph-fill ph-arrows-merge text-slate-500"></i> Comparativa Histórica de Logros
                         </h4>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                             ${historyCardsHtml || '<div class="text-xs text-slate-500 col-span-full">Sin datos previos combinados.</div>'}
                         </div>
                     </div>
